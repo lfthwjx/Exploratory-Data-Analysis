@@ -1,0 +1,214 @@
+---
+title: "SI618_Project_Report"
+author: "Jun Wang wanjun 51383890"
+date: "Dec. 16 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##1. Motivation
+
+* a) In this project, we want to perform the exploratory analysis about the weather in New York City, given that I am going to work at Big Apple. We want to explore the norm and the exception of the weather in New York City, especially the weather of New York in the winter, so that we can get familiar with the climate in advance.
+
+* b) The four specific questions we want to explore are:
+    + 1.How does the weather look like in New York¡¯s winter?
+    + 2.When the hurricane stuck, how did the weather like in New York, especially the life-threaten hurricane?
+    + 3.The annual weather analysis New York City.
+    + 4.The difference between the weather of the urban area and the rural area in New York.
+    
+##2. Data Source
+
+* The datasets are pulled from the API provided by NOAA (National Centers for Environmental Information). The weather data from weather stations is available at the specific location of the weather station across all the country, and it is often useful to have estimates of daily or hourly weather aggregated on a larger spatial level, so that it can be particularly useful to be able to pull time series of weather by county. The base URL of API is <http://www.ncdc.noaa.gov/cdo-web/api/v2/{endpoint}>, and the endpoint can be the specific category of the weather data we request, such as datasets, locations and stations. Here, the R packages, _rnoaa_ and _countyweather_ provide useful and integrated weather data access methods, so here we use the functions in package _countyweather_ to retrieve the data directly. The functions in the package _countyweather_ compiles the weather data accessed from the package _rnoaa_ in advance for us, so that we can retrieve the weather data in specific weather station in specific period through simply and direct methods. To use these two packages, we need to request an API key from NOAA here: <http://www.ncdc.noaa.gov/cdo-web/token>. Once you have this NOAA API key, you'll need to pass it through to some of the functions in this package that pull data from NOAA. The most secure way to use this API key is to store it in your _.Renviron_ configuration file, and then you can set it up as the value of an object in R code or R markdown documents without having to include the key itself in the script. Once you have opened or created an .Renviron file, type the following into the file, __noaakey=your_key__. Before using functions that require the API key, set up the object _rnoaakey_ to have your NOAA API key by running: __options("noaakey" = Sys.getenv("noaakey"))__. Notice that it will take a while to retrieve data from the API.
+
+* The main variables the datasets include are _time_ in date format, _positions_ in character format, _precipitation, wind speed, snow fall, snow depth, maximum temperature, minimum temperature_ in numeric format and etc.
+
+* The number of records depends on the length of the time we want to analysis. For example, if we want to perform the annual analysis on the weather of a location, we shuold retrieve 365 records of the weather data.
+
+* In the annual anlysis, we cover a whole year. When we analysis the winter, we cover 4 winter months. The weeks in which the hurricane stuck are selected. 
+
+## 3. Methods
+
+We just need to specify the weather variables and the weather station and the periods we want to analysis when we retrieve the weather data. The function *daily_fips* and *hourly_fips* is mainly used to retrieve the weather data. For *hourly_fips* and *daily_fips*, and time series functions, we can choose to filter out any weather stations that report variables for less that a certain percent of time (coverage), then we can handle the missing and the incomplete data in the data retrieve step. The function will average the weather data collected from all the weather stations in one county in default, so that the noisy is eliminated by the averaged data, and the averaged data can also handle the missing data and incomplete data ex-ante. 
+
+* 1.How does the weather look like in New York¡¯s winter?
+    + a) In this question, we collect the weather data in three winters in 2013, 2014 and 2015, the weather variables we collect are precipitation, maximum temperature, minumum temperature, snow fall and snow depth. The function *daily_fips* is used.
+    + b) The missing data and incomplete data will be omitted.
+    + c) After retrieving data, we visualize the data first to see the trend of the temperature and precipitation. Then we can perform the statistical analysis of the weather variables. 
+    + d) The challenge we encounter is how to identify the pattern of the weather data. We can use the visualization such as smooth plot and statistical methods such as range, mean to solve it.
+
+* 2.When the hurricane stuck, how did the weather like in New York, especially the life-threaten hurricane?
+    + a) In this question, we collect the weather data when Hurricane Sandy and Hurricane Irene stuck New York. The weather variables we collect are wind speed, temperature and precipitation. We use the function *hourly_fips* to retrieve the data. 
+    + b) The missing data and incomplete data will be omitted and skipped.
+    + c) After retrieving data, we will visualize the weather data for some variables, then we can judge the data according to its mean or standard deviation.
+    + d) Because the data we collect is hourly, and the weather data collected in the hurricanes could be diffcult to analysis. To solve it, we can use the visualization we made before as well as the numeric analysis.
+    
+* 3.The annual weather analysis New York City.
+    + a) In this question, we collect the whole year's weather data in 2015 to perform analysis, the weather variables are temperature and precipitation.
+    + b) The missing data and incomplete data will be omitted and skipped, the noisy will be smoothed.
+    + c) We will visualize the data first, then analysis the weather in various domains, such as time domain and frequency domain.
+    + d) We should to analysis the annual weather of New York City comprehensively, so we should use various plots such as spectrum to identify the pattern of the climate.
+    
+* 4.The difference between the weather of the urban area and the rural area in New York.
+    + a) In this question, we collect the annual weather data for New York City and Rockland County. 
+    + b) The missing data and incomplete data will be omitted and skipped.
+    + c) We will visualize the data first, then we will make comparison between the statistical data derived from the two counties.
+    + d) It will be diffcult to identify the difference betweent the patterns of the two counties which are nearby each other. To solve it, we combine the visualizations with the statistical numbers, which will show the difference clearly.
+    
+## 4. Analysis and Results
+
+* 1.How does the weather look like in New York¡¯s winter?
+The weather station map is shown as the geographical plot, and the head of the weather data of the winter in 2015 is also presented.
+
+```{r, echo=FALSE}
+library(countyweather)
+library(rnoaa)
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(hydroTSM)
+library(zoo)
+setwd("C:\\UM\\Courses\\SI\\SI618\\Project")
+Sys.setenv(LANGUAGE="en")
+Sys.setlocale("LC_ALL", "English")
+options("noaakey" = Sys.getenv("noaakey"))
+
+newyork_winter_2015 <- daily_fips(fips = "36061", date_min = "2015-12-01", date_max = "2016-03-31", var = c("prcp","tmin","tmax","snow","snwd"))
+newyork_winter_2014 <- daily_fips(fips = "36061", date_min = "2014-12-01", date_max = "2015-03-31", var = c("prcp","tmin","tmax","snow","snwd"))
+newyork_winter_2013 <- daily_fips(fips = "36061", date_min = "2013-12-01", date_max = "2014-03-31", var = c("prcp","tmin","tmax","snow","snwd"))
+newyork_winter_2015
+
+df_proc <- function(newyork_winter_2015){
+  df_winter_2015 <- newyork_winter_2015$daily_data[,c(1:6)]
+  #str(df_winter_2015)
+  df_winter_2015 <- cbind(df_winter_2015,rowMeans(df_winter_2015[,c(5:6)]))
+  colnames(df_winter_2015)[7]<-"mean temp"
+  df_winter_2015
+}
+df_winter_2015 <- df_proc(newyork_winter_2015)
+df_winter_2014 <- df_proc(newyork_winter_2014)
+df_winter_2013 <- df_proc(newyork_winter_2013)
+
+ggplot(df_winter_2015,aes(x=date,y=snow))+ggtitle("Snowfall in 2013, 2014 and 2015 winter")+geom_line()+geom_line(data=df_winter_2014)+geom_line(data=df_winter_2013)+theme_minimal()+xlab("Date in Winter") + ylab("Daily snowfall (mm)")
+ggplot(df_winter_2015,aes(x=date,y=snwd))+ggtitle("Snow depth in 2013, 2014 and 2015 winter")+geom_line()+geom_line(data=df_winter_2014)+geom_line(data=df_winter_2013)+theme_minimal()+xlab("Date in Winter") + ylab("Daily snow depth (mm)")
+
+```
+
+The snowfall plot shows that in 2015 winter, a snowstorm attacked New York, and the snowfall was more than many times of the maximum snowfall in 2013 and 2014. However, in 2015 winter, the snows other than that snow storm were so small comparing with the snows in 2014 winter and 2013 winter. The snow depth plot also shows the trend.
+
+```{r, echo=FALSE}
+mean_temp<-data.frame(c("2013","2014","2015"),c(mean(df_winter_2013$`mean temp`),mean(df_winter_2014$`mean temp`),mean(df_winter_2015$`mean temp`)))
+colnames(mean_temp) <- c("Years","mean temperature in winter")
+mean_temp
+mean_prcp<-data.frame(c("2013","2014","2015"),c(mean(df_winter_2013$prcp),mean(df_winter_2014$prcp),mean(df_winter_2015$prcp)))
+colnames(mean_prcp) <- c("Years","mean precipitation in winter")
+mean_prcp
+```
+
+The mean temperature in 2015 winter is apparently higher than it in 2014 winter and 2013 winter, which also proves an evidence of less snow in 2015 winter. While the averaged precipitation in these three years is similar.
+
+* 2.When the hurricane stuck, how did the weather like in New York, especially the life-threaten hurricane?
+The storm surge of Hurricane Sandy hit New York on Oct. 29, 2012, flooding streets, tunnels and subway lines and cutting power in and around the city, causing 53 fatalities. Hurricane Irene hit New York City on Aug. 28, 2011, and it caused 5 fatalities. The weather station map is shown as the geographical plot, and the head of the weather data collected by the station when Hurricane Sandy hit is also presented. 
+
+```{r, echo=FALSE}
+newyork_sandy <- daily_fips(fips = "36061", date_min="2012-10-28",date_max = "2012-11-02",var = c("prcp","awnd"))
+newyork_irene <- daily_fips(fips = "36061", date_min="2011-08-26",date_max = "2011-08-31",var = c("prcp","awnd"))
+newyork_hour_2012<-hourly_fips(fips = "36061", year = 2012, var = c("wind_speed","temperature"))
+newyork_hour_2011<-hourly_fips(fips = "36061", year = 2011, var = c("wind_speed","temperature"))
+
+newyork_hour_2012
+newyork_sandy$daily_data
+newyork_irene$daily_data
+
+to_plot <- newyork_hour_2012$hourly_data %>%
+  filter(months(date_time) == "October")
+
+ggplot(to_plot, aes(x = date_time, y = wind_speed,
+                    color = wind_speed_reporting)) + 
+  geom_line() + theme_minimal() + 
+  xlab("Date in October 2012") + 
+  ylab("Wind speed (m/s)")
+
+ggplot(to_plot, aes(x = date_time, y = temperature,
+                    color = temperature_reporting)) + 
+  geom_line() + theme_minimal() + 
+  xlab("Date in October 2012") + 
+  ylab("Temperature (degrees Celsius)")
+
+to_plot <- newyork_hour_2011$hourly_data %>%
+  filter(months(date_time) == "August")
+
+ggplot(to_plot, aes(x = date_time, y = wind_speed,
+                    color = wind_speed_reporting)) + 
+  geom_line() + theme_minimal() + 
+  xlab("Date in August 2011") + 
+  ylab("Wind speed (m/s)")
+
+ggplot(to_plot, aes(x = date_time, y = temperature,
+                    color = temperature_reporting)) + 
+  geom_line() + theme_minimal() + 
+  xlab("Date in August 2011") + 
+  ylab("Temperature (degrees Celsius)")
+```
+
+The daily weather data shows the weather in the week of Hurricane Sandy and Hurricane Irene clearly, on Oct. 29 2012 and Aug. 28, the average daily wind speed (tenths of meters per second) and the precipitation (mm) reached the maximum among the days. The wind brought by Hurricane Sandy and the rainfall brought by Hurricane Irene was very strong. The wind speed plots show the effect clearly, on Oct. 29 2012 and Aug. 28, the wind speed increased sharply. However, the effect on the temperature from the hurricanes were not apparent, even it was in the decreasing trend.
+
+* 3.The annual weather analysis New York City.
+Here we mainly perform the analysis of the temprature and the precipitation in 2015. Basically, the temperature plot shows clear pattern changing with the seansons, and the average temperature in each months also shows this pattern. The minimum average monthly temperature is -4.4 degrees Celsius, and the maximum average monthly temperature is 26.0 degrees Celsius. However, we should perform deep analysis on the precipitation.
+
+```{r, echo=FALSE}
+newyork_2015 <- daily_fips(fips = "36061", date_min = "2015-01-01", date_max = "2015-12-31", var = c("prcp","tmin","tmax"))
+
+year_proc<-function(newyork_2015){
+  ny_year_2015 <- newyork_2015$daily_data[,c(1:4)]
+  ny_year_2015 <- cbind(ny_year_2015,rowMeans(ny_year_2015[,3:4]))
+  colnames(ny_year_2015)[5] <- "mean_temp"
+  ny_year_2015
+}
+ny_year_2015 <- year_proc(newyork_2015)
+
+ggplot(ny_year_2015,aes(x=date,y=prcp),main="Precipitation in 2015")+geom_line()+geom_point()+theme_minimal()+xlab("Date in 2015") + ylab("Daily rainfall (mm)")
+
+ggplot(ny_year_2015,aes(x=date,y=mean_temp),main="Averaged temperature in 2015")+geom_line()+geom_point()+theme_minimal()+xlab("Date in 2015") + ylab("Temperature (degrees Celsius)") + geom_smooth(span=0.3)
+
+ny_s_2015 <- ny_year_2015[,c(1,2,5)]
+ts_ny_2015<-read.zoo(ny_s_2015)
+x <- window(ts_ny_2015, start=as.Date("2015-01-01"))
+daily2monthly(x[,2], FUN=mean)
+min(daily2monthly(x[,2], FUN=mean))
+max(daily2monthly(x[,2], FUN=mean))
+```
+
+Here, we show series of analysis on the precipitation. The sum of the precipitation in each month is shown,and, basically, the variations between months are great and the rainfall and the snowfall was frequently. The amount of the daily precipitation mainly distributes over 0~10 mm. The minimum sum of monthly precipitation is 47.2 mm, and the maximum sum of monthly precipitation is 132.7 mm.
+
+```{r, echo=FALSE}
+daily2monthly(x[,1], FUN=sum)
+min(daily2monthly(x[,1], FUN=sum))
+max(daily2monthly(x[,1], FUN=sum))
+smry(x)
+hydroplot(x[,1], var.type="Precipitation", main="at New York City", pfreq = "dm", from="2015-01-01")
+```
+
+* 4.The difference between the weather of the urban area and the rural area in New York.
+Here, we choose Orange County as the rural area being analyzed. The weather stations map is shown as the geographical plot, and the head of the weather data of 2015 in Orange County is also presented.
+
+```{r, echo=FALSE}
+orange_2015<-daily_fips(fips = "36071",date_min = "2015-01-01", date_max = "2015-12-31", var = c("prcp","tmin","tmax"))
+or_year_2015 <- year_proc(orange_2015)
+
+ny_2015<-data.frame(c("Averaged temperature","Averaged precipitation"),c(mean(ny_year_2015$mean_temp),mean(ny_year_2015$prcp)))
+colnames(ny_2015)<-c("Year","Amount")
+ny_2015
+or_2015<-data.frame(c("Averaged temperature","Averaged precipitation"),c(mean(or_year_2015$mean_temp),mean(or_year_2015$prcp)))
+colnames(or_2015)<-c("Year","Amount")
+or_2015
+
+ggplot(or_year_2015,aes(x=date,y=prcp),main="Precipitation in 2015")+geom_line()+geom_point()+theme_minimal()+xlab("Date in 2015") + ylab("Daily rainfall (mm)")
+
+ggplot(or_year_2015,aes(x=date,y=mean_temp),main="Averaged temperature in 2015")+geom_line()+geom_point()+theme_minimal()+xlab("Date in 2015") + ylab("Temperature (degrees Celsius)") + geom_smooth(span=0.3)
+
+```
+
+It is apparent that the average temperature in New York City is higher than that in Orange County, and the precipitation in New York City is lower than that in Orange County, which is also verified by the thermal island effect. From the plots, we find that the pattern of the temperature and the precipitation arount the whole year is similar.

@@ -1,0 +1,125 @@
+---
+title: "si618hw2report_wanjun"
+author: "JW"
+date: "2016/11/07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#SI 618 Homework 2
+##Load and Cleanse Data (5 points)
+
+First load the TSV data file created in part 1 into R using the **read.table()** function. Then apply listwise deletion to remove 
+records with missing data and display the first 15 rows of the data frame.
+
+```{r,echo=FALSE}
+library(ggplot2)
+library(plyr)
+setwd("C:\\UM\\Courses\\SI\\SI618\\HW\\HW2")
+businessdata<-read.table("businessdata.tsv",sep = '\t',head=TRUE,quote = "",comment.char = "")
+businessdata<-na.omit(businessdata)
+head(businessdata,15)
+```
+
+##Histograms of Star Ratings (10 points)
+
+Using the **qplot()** function, plot histograms of the distribution of star ratings, faceted by state, using a bin width of 0.5.
+
+```{r, echo=FALSE}
+qplot(x=stars,facets = .~state,fill=state,main = "Histograms of Star Ratings",binwidth=0.5,data=businessdata)
+```
+
+##Histograms of Review Counts (10 points)
+Using the **qplot()** function, plot the distribution of review counts as a histogram. First, plot a histogram that simply uses the raw values in review_count:
+
+```{r,echo=FALSE}
+qplot(x=review_count,main="Histograms of Review Counts",xlab="Review Counts",data = businessdata)
+```
+
+Then for comparison, plot a histogram that transforms the review counts using the log() function.
+
+```{r,echo=FALSE}
+qplot(x=log(review_count),main="Histograms of Review Counts",xlab="log(Review Counts)",data = businessdata)
+```
+
+We can see the distribution of review counts has a long tail. To zoom in on the part of the distribution with review counts between 0 and 100, 
+use the **subset()** function to select just the data with review count <= 100. And then plot the (non-log-transformed) histogram again using a 
+bin width of 2, and also include a overlay that plots a probability density function over the review counts. (Recall that you can produce 
+an overlay by passing a list of geometry names to the geom= argument in qplot().)
+
+```{r,echo=FALSE}
+subset_bus = subset(businessdata,review_count<=100&review_count>=0,review_count)
+qplot(x=subset_bus$review_count,main = "Histograms of Review Counts (Filtered)",xlab="Review Counts",geom="density")+
+  geom_histogram(aes(y=(..count..)/(2*sum(..count..))),center=0.99,binwidth = 2,alpha=0.5)
+```
+
+##Boxplot of Star Ratings by States (5 points)
+Here, map the value of the state variable to the "color" and "fill" aesthetics, and plot a boxplot of the star ratings by state.
+
+```{r,echo=FALSE}
+qplot(state, stars, data = businessdata, geom = "boxplot", colour = state, fill = state, alpha = 0.5, main = "Star Ratings by States")+scale_alpha(guide = 'none')
+```
+
+##Jittered Plot of Star Ratings by State (5 points)
+Here, map the value of the state variable to the "color" and "fill" aesthetics, and plot a jittered point plot of the star ratings by state.
+
+```{r,echo=FALSE}
+qplot(state, stars, data = businessdata, geom = "jitter", colour = state, fill = state, alpha = 0.5, main = "Star Ratings By States") + scale_alpha(guide = 'none')
+```
+
+##Bar Chart of Number of Businesses by State (5 points)
+Plot a bar chart showing the number of businesses in the dataset for each state.
+
+```{r,echo=FALSE}
+qplot(state, data = businessdata)
+```
+
+##Scatterplot of Stars and Review Counts (5 points)
+Plot a scatterplot showing the star rating and review count for all businesses, mapping the state variable to the color aesthetic.
+
+```{r,echo=FALSE}
+qplot(x=stars,y=review_count,data = businessdata,fill=state,color=state)
+```
+
+##Slice and Dice Data with plyr
+###Subsetting Data (15 points)
+We first rank the business in each city for each main category and display the first 20 results of the resulting list.
+
+```{r,echo=FALSE}
+ddply_bus<-ddply(businessdata,c("city","main_category"),transform,rank=rank(-stars,ties.method = "first"))
+head(ddply_bus,20)
+```
+
+Then the top 5 ranked businesses in each city for each main category are found. We're interested in the top 5 businesses that have a main
+category of "Thai" in each city. The data should be ordered by city name, and then by rank. The result is listed below.
+
+```{r,echo=FALSE}
+thai_bus<-subset(businessdata,main_category=="Thai")
+ddply_thai<-ddply(thai_bus,.(city),transform,rank=rank(-stars,ties.method = "first"))
+thai_top5_all = subset(ddply_thai,rank<=5)
+thai_top5 = subset(ddply_thai[,c(2,1,7)], rank <= 5)
+thai_top5<-arrange(thai_top5,city,rank)
+thai_top5
+```
+
+###Summarize Data (5 points)
+Compute the mean star ratings grouped by state, for all the selected top 5 Thai restaurants selected in the previous section. Plot the mean star rating using a point chart, 
+use the size of the point to indicate the mean review count for that state's restaurants, and sort the states by descending mean rating.
+
+A very useful way to control the order in which the states are sorted in the plot is the **reorder()** function.
+
+* The **reorder** function operates on a variable and takes three parameters:
+    + The variable whose factors you want to reorder
+    + A numeric vector of equal length (i.e. that has one value per possible value of the given variable. In this case, one value per possible state.)
+    + A function to apply to the numeric vector (optional: the identity function if not specified)
+  
+Since R treats each unique state string like an unordered factor, you can use reorder() to impose an ordering on the states according to the numeric vector you provide.  
+We'll cover factors more in an upcoming class.
+
+```{r, echo=FALSE}
+mean_stars = ddply(thai_top5_all,.(state),summarise,mean_star=mean(stars),mean_review=mean(review_count))
+qplot(reorder(state,mean_star,function(x)-x),mean_star,data=mean_stars,geom = "point",ylab = "Mean Star Rating",xlab = "State",size=mean_review,main = "Mean Star Rating of Top Thai Restaurants, by State")
+```

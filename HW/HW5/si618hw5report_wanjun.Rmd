@@ -1,0 +1,168 @@
+Principal Components Analysis (PCA) and Exploratory Factor Analysis (EFA)
+=============================================================
+
+In the first part of this homework assignment, you'll perform PCA on a US crime data set and explore the relationships between the variables in the data. In the second part, you'll use EFA to analyze the responses from a survey on managerial skills.
+
+US Crime Data Analysis (35 points)
+---------------------------------
+
+First, load the data provided in the uscrime.txt file into an R data frame and display it as below (5 points). The dataset contains the following variables:
+
+R: Crime rate: # of offenses reported to police per million population
+
+Age: The number of males of age 14-24 per 1000 population
+
+Ed: Mean # of years of schooling x 10 for persons of age 25 or older
+
+Ex0: 1960 per capita expenditure on police by state and local government
+
+Ex1: 1959 per capita expenditure on police by state and local government
+
+LF: Labor force participation rate per 1000 civilian urban males age 14-24
+
+M: The number of males per 1000 females
+
+N: State population size in hundred thousands
+
+U1: Unemployment rate of urban males per 1000 of age 14-24
+
+U2: Unemployment rate of urban males per 1000 of age 35-39
+
+W: Median value of transferable goods and assets or family income in tens of $
+
+X: The number of families per 1000 earning below 1/2 the median income
+
+
+Once loaded, the data should look like:
+
+```{r echo=FALSE}
+# Your code here
+setwd("C:\\UM\\Courses\\SI\\SI618\\HW\\HW5")
+uscrime<-read.delim('uscrime.txt')
+uscrime
+```
+
+
+Now perform PCA with scaling, and plot the resulting Scree plot (10 points). 
+
+```{r fig.width=7, fig.height=6,echo=FALSE}
+# Your code here
+pcs <- prcomp(uscrime,scale = TRUE)
+pcs
+plot(pcs,type = 'l')
+```
+
+**Answer the following questions:**
+*What does the scree plot tell you? (2 points)
+
+This scree plot shows that 6 of those factors explain most of the variability because the line starts to straighten after factor 6. The remaining factors explain a very small proportion of the variability and are likely unimportant. And there are 4 factors with an eigenvalue > 1, which explain more variance than a single observed variable.
+
+*What can you say about the data from the scree plot? (3 points)
+
+6 of these factors in the data explain the variance well, and the first principal component captures most of the interesting variation in the data, which implies that this single factor may explain across multiple variables.
+
+Draw a biplot of the PCA results (5 points)
+
+```{r fig.width=10, fig.height=10, echo=FALSE}
+# Your code here
+biplot(pcs)
+```
+
+**Answer questions:**
+* (2 points) From the biplot, what can you say about Ex0 (1960 per capita police expenditure) and Ex1 (1959 per capita police expenditure)? 
+
+EX0 and Ex1 are almost the same.
+
+* (2 points) From the biplot, what can you say about R (crime rate) and Ex0 (1960 per capita police expenditure)? 
+
+R and Ex0 are highly correlated.
+
+* (2 points) From the biplot, what can you say about W (median assets/income) and Age (proportion of males 14-24)? 
+
+W and Age are almost unrelated.
+
+* (4 points) U2 and U1 point in almost exactly the same direction. Does this mean they are highly correlated? Why? Plot a scatterplot of these two variables and compute the Pearson's correlation coeffecient to justify your answer. 
+
+```{r fig.width=10, fig.height=10, echo=FALSE}
+plot(uscrime[,c(9,10)])
+pearson.cor = cor(uscrime[,c(9,10)],method = "pearson")
+pearson.cor
+```
+
+Yes, we can say that they are highly correlated. From the scatterplot, we can find that the points distribute on a line basically. And the Pearson's correlation coeffecient, 0.746 shows also shows high correlation. 
+
+Managerial Skills Survey Analysis (30 points)
+--------------------------------------------
+
+The included CSV file "manage.csv" contains survey data of these 11 questions:
+
+1. I show confidence in my staff
+2. I let my staff know they are doing well
+3. I give feedback to staff on how well they are working
+4. I would personally compliment staff if they did outstanding work
+5. I believe in setting goals and achieving them
+6. I achieve the things I want to get done in a day
+7. I never try to put off until tomorrow what I can finish today
+8. I plan the use of my time well
+9. I remain clear headed when too many demands are made upon me
+10. I rarely overlook important factors when plans are made
+11.	I handle complex problems efficiently
+
+We can view each question as an apparent skill. The question we seek to answer through EFA is: Are there underlying fundamental "latent" skills that "produce" or "explain" these 11 observed skills?
+
+First, load the data into a R data frame. You can't do EFA on this data frame directly, because the answers to these survey questions are not numerical. You'll need to convert the data frame into a numeric data frame according to the following scale (6 points):
+
+Survey Answer  | Corresponding Numeric Value
+------------- | -------------
+VERY LITTLE EXTENT  | 1
+LITTLE EXTENT  | 2
+SOME EXTENT | 3
+MODERATE EXTENT | 4
+CONSIDERABLE EXTENT | 5
+GREAT EXTENT | 6
+TO A VERY GREAT EXTENT | 7
+
+```{r, echo=FALSE}
+manage<-read.delim('manage.csv',sep = ',')
+indx <- sapply(manage,is.factor)
+manage[indx] <- lapply(manage[indx],function(x)(factor(as.character(x),levels=c("VERY LITTLE EXTENT","LITTLE EXTENT","SOME EXTENT","MODERATE EXTENT","CONSIDERABLE EXTENT","GREAT EXTENT","TO A VERY GREAT EXTENT"))))
+for(i in c(1:11)){
+  levels(manage[,i]) <- c(1,2,3,4,5,6,7)
+  manage[,i]<-as.numeric(levels(manage[,i])[manage[,i]])
+}
+
+factanal(x=manage,factors = 1,rotation = "promax")
+factanal(x=manage,factors = 2,rotation = "promax")
+factanal(x=manage,factors = 3,rotation = "promax")
+```
+
+
+Now perform exploratory factor analysis with "promax" rotation. Experiment with a minimum of 1,2 and 3 factors. Show the outputs of the factor analysis (12 points). 
+
+Can you find a set of factors that have "simple" structure (e.g. according to Thurstone's criteria covered in class) while fitting the data well? Include a justification for your choice (6 points) Give your interpretation of each factor (6 points)?
+
+The experiment with 3 factors shows well performance while fitting data, given the p-value is 0.327>0.05 and the factor correlations.
+According to Thurstone criteria, we can find the set of factors that have "simple" structure, as well as the interpretations:
+
+* Factor 1: time management: 
+    + 6. I achieve the things I want to get done in a day
+    + 7. I never try to put off until tomorrow what I can finish today
+    + 8. I plan the use of my time well
+    
+* Factor 2: communication ability:
+    + 1. I show confidence in my staff
+    + 2. I let my staff know they are doing well
+    + 3. I give feedback to staff on how well they are working
+    + 4. I would personally compliment staff if they did outstanding work
+    
+* Factor 3: transaction handling ability:
+    + 9. I remain clear headed when too many demands are made upon me
+    + 10. I rarely overlook important factors when plans are made
+    + 11. I handle complex problems efficiently
+   
+* Justifications using Thurstone criterias:
+    + 1. Each variable should produce at least one zero loading on some factor. (Correct)
+    + 2. Each factor should have at least as many zero loadings as there are factors. (Correct)
+    + 3. Each pair of factors should have variables with significant loadings on one and zero loadings on the other. (Correct)
+    + 4. Each pair of factors should have a large proportion of zero loadings on both factors (if > 3 factors total). (~)
+    + 5. Each pair of factors should have only a few complex variables. (Correct)

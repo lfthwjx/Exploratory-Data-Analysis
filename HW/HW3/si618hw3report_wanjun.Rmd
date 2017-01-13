@@ -1,0 +1,110 @@
+---
+output:
+  html_document:
+    smart: no
+---
+SI 618 Homework 3
+=====================
+
+
+
+## Getting Data from a SQLite Database (10 points)
+
+In the data preparation step, you created a SQLite database and populated it with vehicle data. Now retrieve this data using the R package DBI and RSQLite, and store it in a data frame named vehicles. You should omit any rows with missing data.
+
+Here are the first 10 rows of the resulting data frame, and the summary. 
+
+```{r echo=FALSE}
+# Your R code here
+library(DBI)
+library(RSQLite)
+library(ggplot2)
+library(plyr)
+setwd("C:\\UM\\Courses\\SI\\SI618\\HW\\HW3")
+sqlite    <- dbDriver("SQLite")
+conn <- dbConnect(sqlite,"vehicles.db")
+query_result<-dbSendQuery(conn,"SELECT * FROM vehicles")
+vehicles<-dbFetch(query_result,n=-1)
+dbClearResult(query_result)
+#vehicles<-na.omit(vehicles)
+#str(vehicles)
+vehicles$cylinders<-as.numeric(vehicles$cylinders)
+vehicles$displ<-as.numeric(vehicles$displ)
+vehicles<-vehicles[!is.na(vehicles$cylinders),]
+head(vehicles,10)
+#tail(vehicles)
+summary(vehicles)
+```
+
+## Converting to Factors (5 points)
+
+To make downstream analysis easier, convert the data in columns make, VClass, cylinders, and trany into factors. Here's the summary of the data frame after the conversion. 
+
+```{r echo=FALSE}
+# Your R code here
+vehicles$make<-as.factor(vehicles$make)
+vehicles$VClass<-as.factor(vehicles$VClass)
+vehicles$cylinders<-as.factor(vehicles$cylinders)
+vehicles$trany<-as.factor(vehicles$trany)
+summary(vehicles)
+```
+
+## Aggregating by multiple variables (15 points)
+
+First, find all combinations of car company (the 'make' column) and vehicle class (the 'VClass' column) that have at least 20 years of mileage data for that class, and list them here.
+
+```{r echo=FALSE}
+# Your R code here
+sub_vehicles<-ddply(vehicles,c('make','VClass'),function(vehicles)(count(vehicles$year)))
+count_vehicles<-ddply(sub_vehicles,c('make','VClass'),function(sub_vehicles)length(sub_vehicles$x))
+colnames(count_vehicles)<-c('make','VClass','year_count')
+filtered<-count_vehicles[count_vehicles$year_count>=20,]
+filtered
+```
+
+## Filtering (10 points)
+
+Now filter the vehicles dataset to include only those records having the combination of car company and vehicle class listed above. Hint: One way to do this is using the merge() function, which is like a SQL JOIN. 
+
+As part of this filtering step, remove any vehicle classes from the VClass factor that are not used in the filtered subset.
+
+Now output the summary of the filtered dataset:
+
+```{r echo=FALSE, fig.width=16}
+# Your R code here
+merged<-merge(filtered,vehicles,by=c('make','VClass'))
+summary(merged)
+```
+
+## Plotting Fuel Economy of Vehicles of Different Makes (30 points)
+
+For each vehicle class in this filtered subset of vehicles (the VClass column), plot the following two charts with ggplot().
+
+A. Plot mean combined MPG (average of data in the comb08 columns) for each vehicle maker, for every year. Use two layers: a layer showing the individual data points, and a smoothed line (without the grey confidence region) fit to the points. Use color to visually distinguish each maker in the plot, and be sure to add a plot title naming the vehicle class.
+
+Hint: to set ggplot default text size to something a bit more readable, use: 
+theme_set(theme_grey(base_size = 18))
+
+B. Compute and plot the mean combined MPG in all years for each vehicle maker. Note how the vehicle makers are ranked by ascending mean combined MPG in the second plot. 
+
+Hint: To get the vertical x-axis labels I added this to my ggplot expression:
+    + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+Note: do not simply cut and paste code multiple times to create all the vehicle class plots. You should be able to generate all these plots with a single block of R statements.
+
+```{r echo=FALSE, fig.width=16}
+# Your R code here
+mains<-unique(merged$VClass)
+vclass<-as.character(factor(mains))
+for(i in 1:length(vclass)){
+  vc_vehicles<-merged[merged$VClass==vclass[i],]
+  sub_vc<-ddply(vc_vehicles,c('year','make'),function(vc_vehicles)(mean(vc_vehicles$comb08)))
+  p<-ggplot(data=sub_vc,aes(x=year,y=V1,color=make))+theme_set(theme_grey(base_size = 18))+ggtitle(vclass[i])+theme(plot.title = element_text(hjust = 0.5))
+  p<-p+geom_point()+xlab("Year")+ylab("Mean Combined MPG")+geom_smooth(se=FALSE)
+  print(p)
+  sub_mk<-ddply(vc_vehicles,c('make'),function(vc_vehicles)mean(vc_vehicles$comb08))
+  q<-ggplot(data = sub_mk,aes(reorder(make,V1),V1))+ theme(axis.text.x = element_text(angle = 90, hjust = 1),plot.title = element_text(hjust = 0.5))
+  q<-q+geom_bar(stat = "identity")+labs(title=vclass[i],x="Make",y="Mean Combined MPG in All Years")
+  print(q)
+}
+```
